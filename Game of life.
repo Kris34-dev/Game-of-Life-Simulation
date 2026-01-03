@@ -1,0 +1,207 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <cstdlib> // За функцията rand()
+#include <ctime>   // За функцията time()
+#include <thread>  // За пауза (sleep)
+#include <chrono>  // За операции с време
+
+//==================================================================
+// ДЕКЛАРАЦИЯ НА КЛАСА (от Game.h)
+//==================================================================
+class Game {
+public:
+    // Конструктор на класа Game, приемащ размерите на полето
+    Game(int rows, int cols);
+    // Задава персонализирани правила за раждане и оцеляване
+    void setRules(const std::vector<int>& birth, const std::vector<int>& survival);
+    // Запълва полето на играта със случайни живи/мъртви клетки
+    void randomizeGrid();
+    // Стартира основния цикъл на симулацията
+    void run();
+
+private:
+    int rows; // Брой редове в полето
+    int cols; // Брой колони в полето
+    std::vector<std::vector<int>> grid; // Текущо състояние на полето
+    std::vector<bool> ruleBirth;       // Правила за раждане
+    std::vector<bool> ruleSurvival;    // Правила за оцеляване
+
+    // Помощни методи на класа
+    void printGrid() const;           // Отпечатва текущото състояние на полето
+    void computeNextGeneration();     // Изчислява следващото поколение
+    int countNeighbors(int x, int y) const; // Брои живите съседи на дадена клетка
+    void clearScreen() const;         // Изчиства екрана на конзолата
+};
+
+//==================================================================
+// ИМПЛЕМЕНТАЦИЯ НА КЛАСА (от Game.cpp)
+//==================================================================
+
+// Конструктор: Инициализира полето и генератора за случайни числа
+Game::Game(int r, int c) : rows(r), cols(c) {
+    // Инициализираме полето с необходимия размер, пълно с нули.
+    grid.assign(rows, std::vector<int>(cols, 0));
+    // Инициализираме правилата по подразбиране (празни).
+    ruleBirth.assign(9, false);
+    ruleSurvival.assign(9, false);
+    // Инициализация на генератора за случайни числа.
+    srand(time(0));
+}
+
+// Метод за задаване на персонализирани правила за раждане и оцеляване
+void Game::setRules(const std::vector<int>& birth, const std::vector<int>& survival) {
+    // Нулираме текущите правила
+    ruleBirth.assign(9, false);
+    ruleSurvival.assign(9, false);
+    // Задаваме правилата за раждане
+    for (int count : birth) {
+        if (count >= 0 && count <= 8) {
+            ruleBirth[count] = true;
+        }
+    }
+    // Задаваме правилата за оцеляване
+    for (int count : survival) {
+        if (count >= 0 && count <= 8) {
+            ruleSurvival[count] = true;
+        }
+    }
+}
+
+// Метод за запълване на полето със случайни живи/мъртви клетки
+void Game::randomizeGrid() {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            grid[i][j] = rand() % 2; // 50% вероятност за жива клетка
+        }
+    }
+}
+
+// Изчиства екрана на конзолата
+void Game::clearScreen() const {
+    // ANSI escape код за изчистване на екрана на конзолата. Работи на повечето терминали.
+    std::cout << "\033[2J\033[1;1H";
+}
+
+// Отпечатва текущото състояние на полето
+void Game::printGrid() const {
+    clearScreen();
+    std::cout << "--- Игра на живота (Персонализирани правила) ---" << std::endl;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (grid[i][j] == 1) std::cout << "O"; // Символ за жива клетка
+            else std::cout << ".";                 // Символ за мъртва клетка
+        }
+        std::cout << std::endl;
+    }
+}
+
+// Брои живите съседи на дадена клетка (x, y)
+int Game::countNeighbors(int x, int y) const {
+    int sum = 0;
+    // Обхождаме всички 8 съседни клетки
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            // Пропускаме самата клетка
+            if (i == 0 && j == 0) continue;
+
+            // Формула за броене на съседи с "зацикляне" на полето (тороидна топология).
+            // Ако клетката излезе от единия край, се появява от другия.
+            int row = (x + i + rows) % rows;
+            int col = (y + j + cols) % cols;
+
+            sum += grid[row][col];
+        }
+    }
+    return sum;
+}
+
+// Изчислява следващото поколение на играта
+void Game::computeNextGeneration() {
+    // Създаваме временен буфер за изчисляване на следващото състояние.
+    std::vector<std::vector<int>> nextGrid = grid;
+
+    // Обхождаме всяка клетка в текущата решетка
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            int neighbors = countNeighbors(i, j); // Брой живи съседи
+
+            if (grid[i][j] == 1) { // Ако текущата клетка е жива
+                if (ruleSurvival[neighbors]) {
+                    nextGrid[i][j] = 1; // Клетката оцелява
+                } else {
+                    nextGrid[i][j] = 0; // Клетката умира от глад или пренаселване
+                }
+            } else { // Ако текущата клетка е мъртва
+                if (ruleBirth[neighbors]) {
+                    nextGrid[i][j] = 1; // Клетката се ражда
+                } else {
+                    nextGrid[i][j] = 0; // Клетката остава мъртва
+                }
+            }
+        }
+    }
+    // Актуализираме текущата решетка с новото състояние.
+    grid = nextGrid;
+}
+
+// Основен цикъл на симулацията
+void Game::run() {
+    while (true) {
+        printGrid();           // Отпечатва текущото поколение
+        computeNextGeneration(); // Изчислява и преминава към следващото поколение
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Пауза за визуализация на анимацията. 
+    }
+}
+
+//==================================================================
+// ГЛАВНА ФУНКЦИЯ (от main.cpp)
+//==================================================================
+
+// Помощна функция за извличане на числа от въведен ред (напр. "2 3")
+std::vector<int> getNumbersFromInput() {
+    std::vector<int> numbers;
+    std::string line;
+    std::getline(std::cin, line); // Чете целия ред
+    std::stringstream ss(line);  // Използва stringstream за парсване на числата
+    int num;
+    while (ss >> num) {          // Извлича числата едно по едно
+        numbers.push_back(num);
+    }
+    return numbers;
+}
+
+// Главна функция на програмата
+int main() {
+    int rows = 20; // Височина на полето по подразбиране
+    int cols = 40; // Ширина на полето по подразбиране
+
+    std::cout << "--- Настройка на Играта на живота на Конуей ---" << std::endl;
+    std::cout << "Размерът на полето по подразбиране е " << rows << "x" << cols << ". Натиснете Enter, за да го използвате." << std::endl;
+
+    std::cout << "\nВъведете броя на съседите, при които мъртва клетка се РАЖДА (напр. '3' за стандартното правило): ";
+    std::vector<int> birthRules = getNumbersFromInput();
+
+    std::cout << "Въведете броя на съседите, при които жива клетка ОЦЕЛЯВА (напр. '2 3' за стандартното правило): ";
+    std::vector<int> survivalRules = getNumbersFromInput();
+
+    // Използване на стандартни правила, ако потребителят не е въвел нищо
+    if (birthRules.empty()) birthRules.push_back(3);
+    if (survivalRules.empty()) {
+        survivalRules.push_back(2);
+        survivalRules.push_back(3);
+    }
+    
+    // Създаване на обект от класа Game
+    Game game(rows, cols);
+    // Задаване на правилата
+    game.setRules(birthRules, survivalRules);
+    // Запълване на полето със случайни клетки
+    game.randomizeGrid();
+    
+    // Стартиране на симулацията
+    game.run();
+
+    return 0; // Програмата завърши успешно
+}
