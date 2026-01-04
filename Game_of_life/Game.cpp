@@ -1,43 +1,10 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <sstream>
-#include <cstdlib> // За функцията rand()
-#include <ctime>   // За функцията time()
-#include <thread>  // За пауза (sleep)
-#include <chrono>  // За операции с време
-
-//==================================================================
-// ДЕКЛАРАЦИЯ НА КЛАСА (от Game.h)
-//==================================================================
-class Game {
-public:
-    // Конструктор на класа Game, приемащ размерите на полето
-    Game(int rows, int cols);
-    // Задава персонализирани правила за раждане и оцеляване
-    void setRules(const std::vector<int>& birth, const std::vector<int>& survival);
-    // Запълва полето на играта със случайни живи/мъртви клетки
-    void randomizeGrid();
-    // Стартира основния цикъл на симулацията
-    void run();
-
-private:
-    int rows; // Брой редове в полето
-    int cols; // Брой колони в полето
-    std::vector<std::vector<int>> grid; // Текущо състояние на полето
-    std::vector<bool> ruleBirth;       // Правила за раждане
-    std::vector<bool> ruleSurvival;    // Правила за оцеляване
-
-    // Помощни методи на класа
-    void printGrid() const;           // Отпечатва текущото състояние на полето
-    void computeNextGeneration();     // Изчислява следващото поколение
-    int countNeighbors(int x, int y) const; // Брои живите съседи на дадена клетка
-    void clearScreen() const;         // Изчиства екрана на конзолата
-};
-
-//==================================================================
-// ИМПЛЕМЕНТАЦИЯ НА КЛАСА (от Game.cpp)
-//==================================================================
+#include "Game.h"
+#include <iostream>  // std::cout, std::endl
+#include <vector>    // std::vector
+#include <cstdlib>   // rand(), srand()
+#include <ctime>     // time()
+#include <thread>    // std::this_thread::sleep_for
+#include <chrono>    // std::chrono::milliseconds
 
 // Конструктор: Инициализира полето и генератора за случайни числа
 Game::Game(int r, int c) : rows(r), cols(c) {
@@ -153,55 +120,4 @@ void Game::run() {
         computeNextGeneration(); // Изчислява и преминава към следващото поколение
         std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Пауза за визуализация на анимацията. 
     }
-}
-
-//==================================================================
-// ГЛАВНА ФУНКЦИЯ (от main.cpp)
-//==================================================================
-
-// Помощна функция за извличане на числа от въведен ред (напр. "2 3")
-std::vector<int> getNumbersFromInput() {
-    std::vector<int> numbers;
-    std::string line;
-    std::getline(std::cin, line); // Чете целия ред
-    std::stringstream ss(line);  // Използва stringstream за парсване на числата
-    int num;
-    while (ss >> num) {          // Извлича числата едно по едно
-        numbers.push_back(num);
-    }
-    return numbers;
-}
-
-// Главна функция на програмата
-int main() {
-    int rows = 20; // Височина на полето по подразбиране
-    int cols = 40; // Ширина на полето по подразбиране
-
-    std::cout << "--- Настройка на Играта на живота на Конуей ---" << std::endl;
-    std::cout << "Размерът на полето по подразбиране е " << rows << "x" << cols << ". Натиснете Enter, за да го използвате." << std::endl;
-
-    std::cout << "\nВъведете броя на съседите, при които мъртва клетка се РАЖДА (напр. '3' за стандартното правило): ";
-    std::vector<int> birthRules = getNumbersFromInput();
-
-    std::cout << "Въведете броя на съседите, при които жива клетка ОЦЕЛЯВА (напр. '2 3' за стандартното правило): ";
-    std::vector<int> survivalRules = getNumbersFromInput();
-
-    // Използване на стандартни правила, ако потребителят не е въвел нищо
-    if (birthRules.empty()) birthRules.push_back(3);
-    if (survivalRules.empty()) {
-        survivalRules.push_back(2);
-        survivalRules.push_back(3);
-    }
-    
-    // Създаване на обект от класа Game
-    Game game(rows, cols);
-    // Задаване на правилата
-    game.setRules(birthRules, survivalRules);
-    // Запълване на полето със случайни клетки
-    game.randomizeGrid();
-    
-    // Стартиране на симулацията
-    game.run();
-
-    return 0; // Програмата завърши успешно
 }
